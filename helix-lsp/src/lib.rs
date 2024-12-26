@@ -16,6 +16,7 @@ use helix_core::syntax::{
     LanguageConfiguration, LanguageServerConfiguration, LanguageServerFeatures,
 };
 use helix_stdx::path;
+use serde::Deserialize;
 use slotmap::SlotMap;
 use tokio::sync::mpsc::UnboundedReceiver;
 
@@ -502,6 +503,14 @@ impl MethodCall {
     }
 }
 
+// See `typst-preview/src/lib.rs` in tinymist (pub struct DocToSrcJumpInfo)
+#[derive(Debug, PartialEq, Clone, Deserialize)]
+pub struct TinymistPreviewScrollSourceParams {
+    pub filepath: String,
+    pub start: Option<(usize, usize)>, // row, column
+    pub end: Option<(usize, usize)>,
+}
+
 #[derive(Debug, PartialEq, Clone)]
 pub enum Notification {
     // we inject this notification to signal the LSP is ready
@@ -512,6 +521,7 @@ pub enum Notification {
     ShowMessage(lsp::ShowMessageParams),
     LogMessage(lsp::LogMessageParams),
     ProgressMessage(lsp::ProgressParams),
+    TinymistPreviewScrollSource(TinymistPreviewScrollSourceParams),
 }
 
 impl Notification {
@@ -537,6 +547,10 @@ impl Notification {
             lsp::notification::Progress::METHOD => {
                 let params: lsp::ProgressParams = params.parse()?;
                 Self::ProgressMessage(params)
+            }
+            "tinymist/preview/scrollSource" => {
+                let params: TinymistPreviewScrollSourceParams = params.parse()?;
+                Self::TinymistPreviewScrollSource(params)
             }
             _ => {
                 return Err(Error::Unhandled);

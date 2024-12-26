@@ -1198,6 +1198,78 @@ pub fn rename_symbol(cx: &mut Context) {
     }
 }
 
+pub fn tinymist_start_preview(cx: &mut Context) {
+    let (_view, doc) = current!(cx.editor);
+    let language_server =
+        language_server_with_feature!(cx.editor, doc, LanguageServerFeature::TinymistStartPreview);
+    let Some(path) = doc.path() else {
+        return;
+    };
+
+    let future = language_server.tinymist_start_preview(path).unwrap();
+
+    // See `preview.rs` in tinymist
+    #[derive(serde::Deserialize, Debug)]
+    #[allow(non_snake_case)]
+    struct StartPreviewResponse {
+        #[allow(dead_code)]
+        staticServerPort: Option<u16>,
+        #[allow(dead_code)]
+        staticServerAddr: Option<String>,
+        dataPlanePort: Option<u16>,
+        #[allow(dead_code)]
+        isPrimary: bool,
+    }
+
+    cx.jobs.callback(async move {
+        let json = future.await?;
+        let response: StartPreviewResponse = serde_json::from_value(json)?;
+
+        if let Some(port) = response.dataPlanePort {
+            let uri = url::Url::parse(&format!("http://127.0.0.1:{port}")).unwrap();
+            crate::open_external_url_callback(uri).await
+        } else {
+            Err(anyhow::anyhow!("tinymist didn't give us a port?"))
+        }
+    })
+}
+
+pub fn tinymist_scroll_preview(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    let language_server =
+        language_server_with_feature!(cx.editor, doc, LanguageServerFeature::TinymistScrollPreview);
+    let offset_encoding = language_server.offset_encoding();
+    let Some(path) = doc.path() else {
+        return;
+    };
+    let pos = doc.position(view.id, offset_encoding);
+    let future = language_server
+        .tinymist_scroll_preview(path, pos.line as usize, pos.character as usize)
+        .unwrap();
+
+    cx.callback(
+        future,
+        move |_editor, _compositor, _response: serde_json::Value| {
+            // nothing to do?
+        },
+    )
+}
+
+pub fn tinymist_kill_preview(cx: &mut Context) {
+    let (_view, doc) = current!(cx.editor);
+    let language_server =
+        language_server_with_feature!(cx.editor, doc, LanguageServerFeature::TinymistKillPreview);
+    let future = language_server.tinymist_kill_preview().unwrap();
+
+    cx.callback(
+        future,
+        move |_editor, _compositor, _response: serde_json::Value| {
+            // nothing to do?
+            // TODO: we can't close the browser tab/window, can we?
+        },
+    )
+}
+
 pub fn select_references_to_symbol_under_cursor(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     let language_server =

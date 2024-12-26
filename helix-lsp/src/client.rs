@@ -353,6 +353,10 @@ impl Client {
                 capabilities.inlay_hint_provider,
                 Some(OneOf::Left(true) | OneOf::Right(InlayHintServerCapabilities::Options(_)))
             ),
+
+            LanguageServerFeature::TinymistStartPreview => self.name == "tinymist",
+            LanguageServerFeature::TinymistKillPreview => self.name == "tinymist",
+            LanguageServerFeature::TinymistScrollPreview => self.name == "tinymist",
         }
     }
 
@@ -1521,6 +1525,75 @@ impl Client {
             let response: Option<lsp::WorkspaceEdit> = serde_json::from_value(json)?;
             Ok(response.unwrap_or_default())
         })
+    }
+
+    pub fn tinymist_start_preview(
+        &self,
+        path: &PathBuf,
+    ) -> Option<impl Future<Output = Result<Value>>> {
+        if !self.supports_feature(LanguageServerFeature::TinymistStartPreview) {
+            return None;
+        }
+
+        let params = lsp::ExecuteCommandParams {
+            command: "tinymist.doStartPreview".into(),
+            arguments: vec![serde_json::json!([
+                serde_json::json!("--partial-rendering".to_string()), // Matches what vscode does?
+                serde_json::json!(path.to_str().unwrap().to_string()),
+            ])],
+            work_done_progress_params: lsp::WorkDoneProgressParams {
+                work_done_token: None,
+            },
+        };
+
+        Some(self.call::<lsp::request::ExecuteCommand>(params))
+    }
+
+    pub fn tinymist_kill_preview(&self) -> Option<impl Future<Output = Result<Value>>> {
+        if !self.supports_feature(LanguageServerFeature::TinymistKillPreview) {
+            return None;
+        }
+
+        let params = lsp::ExecuteCommandParams {
+            command: "tinymist.doKillPreview".into(),
+            arguments: vec![
+                serde_json::json!("default_preview"), // default task id (see `crates/typst-preview/src/args.rs` in tinymist)
+            ],
+            work_done_progress_params: lsp::WorkDoneProgressParams {
+                work_done_token: None,
+            },
+        };
+
+        Some(self.call::<lsp::request::ExecuteCommand>(params))
+    }
+
+    pub fn tinymist_scroll_preview(
+        &self,
+        filepath: &PathBuf,
+        line: usize,
+        character: usize,
+    ) -> Option<impl Future<Output = Result<Value>>> {
+        if !self.supports_feature(LanguageServerFeature::TinymistScrollPreview) {
+            return None;
+        }
+
+        let params = lsp::ExecuteCommandParams {
+            command: "tinymist.scrollPreview".into(),
+            arguments: vec![
+                serde_json::json!("default_preview"), // default task id (see `crates/typst-preview/src/args.rs` in tinymist)
+                serde_json::json!({
+                    "event": "panelScrollTo", // TODO: support the others?
+                    "filepath": filepath.to_str().unwrap().to_string(),
+                    "line": line,
+                    "character": character,
+                }),
+            ],
+            work_done_progress_params: lsp::WorkDoneProgressParams {
+                work_done_token: None,
+            },
+        };
+
+        Some(self.call::<lsp::request::ExecuteCommand>(params))
     }
 
     pub fn command(&self, command: lsp::Command) -> Option<impl Future<Output = Result<Value>>> {

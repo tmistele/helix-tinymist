@@ -1,3 +1,17 @@
+# Helix ♥️ tinymist (helix fork)
+
+Adds rudimentary support for `tinymist` custom LSP commands to helix. This might become a [helix plugin](https://github.com/helix-editor/helix/pull/8675) some day.
+
+There are three new commands:
+
+- `tinymist_start_preview`: Start preview
+- `tinymist_kill_preview`: Kill preview
+- `tinymist_scroll_preview`: Scroll preview to show the rendered content corresponding to the current cursor positoin
+
+Inspired by <https://github.com/helix-editor/helix/issues/11435#issuecomment-2282325188>
+
+---
+
 <div align="center">
 
 <h1>
