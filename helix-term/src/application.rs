@@ -971,6 +971,64 @@ impl Application {
                         // Remove the language server from the registry.
                         self.editor.language_servers.remove_by_id(server_id);
                     }
+                    Notification::TinymistPreviewScrollSource(params) => {
+                        let language_server = language_server!();
+                        let offset_encoding = language_server.offset_encoding();
+
+                        // TODO: convert to showDocument and call self.handle_show_document instead?
+
+                        let path = std::path::PathBuf::from(params.filepath);
+                        let action = helix_view::editor::Action::Replace;
+                        let doc_id = match self.editor.open(path.as_path(), action) {
+                            Ok(id) => id,
+                            Err(err) => {
+                                log::error!("failed to open path: {:?}: {:?}", path, err);
+                                return;
+                            }
+                        };
+
+                        let doc = doc_mut!(self.editor, &doc_id);
+
+                        let Some((start_row, start_col)) = params.start else {
+                            return;
+                        };
+                        let Some((end_row, end_col)) = params.end else {
+                            return;
+                        };
+
+                        if let Some(new_range) = lsp_range_to_range(
+                            doc.text(),
+                            lsp::Range {
+                                start: lsp::Position {
+                                    line: start_row as u32,
+                                    character: start_col as u32,
+                                },
+                                end: lsp::Position {
+                                    line: end_row as u32,
+                                    character: end_col as u32,
+                                },
+                            },
+                            offset_encoding,
+                        ) {
+                            let view = view_mut!(self.editor);
+
+                            // we flip the range so that the cursor sits on the start of the symbol
+                            // (for example start of the function).
+                            doc.set_selection(
+                                view.id,
+                                Selection::single(new_range.head, new_range.anchor),
+                            );
+                            if action.align_view(view, doc.id()) {
+                                align_view(doc, view, Align::Center);
+                            }
+                        } else {
+                            log::warn!(
+                                "lsp position out of bounds - {:?} {:?}",
+                                params.start,
+                                params.end
+                            );
+                        };
+                    }
                 }
             }
             Call::MethodCall(helix_lsp::jsonrpc::MethodCall {
