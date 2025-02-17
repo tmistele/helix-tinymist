@@ -53,13 +53,13 @@ log = "0.4"
 nucleo.workspace = true
 ignore = "0.4"
 # markdown doc rendering
-pulldown-cmark = { version = "0.12", default-features = false }
+pulldown-cmark = { version = "0.13", default-features = false }
 # file type detection
 content_inspector = "0.2.4"
 thiserror.workspace = true
 
 # opening URLs
-open = "5.3.1"
+open = "5.3.2"
 url = "2.5.4"
 
 # config
@@ -83,7 +83,7 @@ crossterm = { version = "0.28", features = ["event-stream", "use-dev-tty", "libc
 helix-loader = { path = "../helix-loader" }
 
 [dev-dependencies]
-smallvec = "1.13"
+smallvec = "1.14"
 indoc = "2.0.5"
-tempfile = "3.14.0"
+tempfile = "3.17.1"
 same-file = "1.0.1"
